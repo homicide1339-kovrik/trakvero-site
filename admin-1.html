@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>ТРАКВЕРО — управление сайтом</title>
+  <style>
+    :root{--bg:#090b0e;--panel:#13171c;--line:#2b3139;--text:#f4f6f8;--muted:#929aa5;--orange:#ff7900;--ok:#4bd08b;--bad:#ff6b6b}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 85% 0,#272019 0,transparent 30%),var(--bg);color:var(--text);font:16px/1.5 Inter,Arial,sans-serif}.wrap{width:min(920px,calc(100% - 28px));margin:auto;padding:28px 0 70px}.top{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:24px}.brand{font-weight:900;letter-spacing:.07em}.brand b{display:inline-grid;place-items:center;width:43px;height:43px;margin-right:10px;background:var(--orange);color:#080808;transform:skew(-8deg)}.site{color:var(--muted);font-size:.86rem}.card{background:rgba(19,23,28,.96);border:1px solid var(--line);padding:22px;margin:14px 0}.card h2{margin:0 0 8px;font-size:1.2rem}.hint{color:var(--muted);font-size:.88rem;margin:0 0 18px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}.full{grid-column:1/-1}label{display:block;color:#cbd0d6;font-size:.82rem;font-weight:700;margin-bottom:6px}input,textarea{width:100%;border:1px solid #343b44;background:#0b0e12;color:#fff;padding:13px 14px;border-radius:4px;font:inherit;outline:none}input:focus,textarea:focus{border-color:var(--orange)}textarea{min-height:105px;resize:vertical}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}button,a.btn{border:0;padding:14px 18px;font-weight:800;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}.primary{background:var(--orange);color:#090909}.secondary{background:#252b32;color:#fff}.danger{background:#3a2020;color:#ffb4b4}.status{margin-top:14px;padding:12px 14px;background:#0c1014;border-left:3px solid var(--line);color:var(--muted);white-space:pre-wrap}.status.ok{border-color:var(--ok);color:#baf2d5}.status.bad{border-color:var(--bad);color:#ffc1c1}.hidden{display:none}.token-row{display:flex;gap:9px}.token-row input{flex:1}.small{font-size:.78rem;color:var(--muted)}@media(max-width:650px){.grid{grid-template-columns:1fr}.full{grid-column:auto}.top{align-items:flex-start;gap:15px}.site{text-align:right}.token-row{display:grid}.actions>*{width:100%}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top"><div class="brand"><b>ТВ</b>ТРАКВЕРО</div><div class="site">Панель управления<br>trakvero.ru</div></header>
+
+  <section class="card" id="authCard">
+    <h2>Вход через GitHub</h2>
+    <p class="hint">Введите ограниченный ключ репозитория. Он хранится только до закрытия вкладки и отправляется напрямую в GitHub.</p>
+    <div class="token-row"><input id="token" type="password" autocomplete="off" placeholder="github_pat_…"><button class="primary" id="connect">Войти</button></div>
+    <p class="small">Ключу нужны только права Contents: Read and write для репозитория trakvero-site.</p>
+    <div class="status" id="authStatus">Ожидаю вход.</div>
+  </section>
+
+  <div id="editor" class="hidden">
+    <section class="card">
+      <h2>Контакты</h2>
+      <div class="grid"><div><label>Телефон на сайте</label><input id="phone" placeholder="+7 928 859-05-18"></div><div><label>Почта</label><input id="email" type="email" placeholder="Trakvero@yandex.ru"></div></div>
+    </section>
+    <section class="card">
+      <h2>Главный экран</h2>
+      <div class="grid"><div><label>Первая строка заголовка</label><input id="hero1"></div><div><label>Оранжевая строка</label><input id="hero2"></div><div class="full"><label>Описание</label><textarea id="heroLead"></textarea></div></div>
+    </section>
+    <section class="card">
+      <h2>О компании</h2>
+      <div class="grid"><div><label>Опыт</label><input id="years"></div><div><label>Количество перевозок</label><input id="cargoCount"></div><div class="full"><label>Первый абзац</label><textarea id="about1"></textarea></div><div class="full"><label>Второй абзац</label><textarea id="about2"></textarea></div></div>
+    </section>
+    <section class="card">
+      <h2>Публикация</h2>
+      <p class="hint">После сохранения GitHub Pages автоматически обновит сайт. Обычно это занимает 1–3 минуты.</p>
+      <div class="actions"><button class="primary" id="save">Сохранить и опубликовать</button><button class="secondary" id="reload">Загрузить заново</button><button class="danger" id="logout">Выйти</button><a class="btn secondary" href="/" target="_blank">Открыть сайт</a></div>
+      <div class="status" id="status">Изменения ещё не сохранялись.</div>
+    </section>
+  </div>
+</div>
+<script>
+const OWNER='homicide1339-kovrik',REPO='trakvero-site',BRANCH='main',api='https://api.github.com';
+let token='',source='',headSha='',treeSha='';
+const $=id=>document.getElementById(id),status=(msg,type='')=>{const el=$('status');el.textContent=msg;el.className='status '+type};
+async function gh(path,options={}){const r=await fetch(api+path,{...options,headers:{Accept:'application/vnd.github+json',Authorization:`Bearer ${token}`,'X-GitHub-Api-Version':'2022-11-28',...(options.headers||{})}});if(!r.ok){let msg='';try{msg=(await r.json()).message}catch{}throw new Error(`${r.status}: ${msg||r.statusText}`)}return r.status===204?null:r.json()}
+function b64ToText(b64){const clean=b64.replace(/\s/g,'');const bin=atob(clean);const bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);return new TextDecoder().decode(bytes)}
+function textToB64(text){const bytes=new TextEncoder().encode(text);let out='',step=0x8000;for(let i=0;i<bytes.length;i+=step)out+=String.fromCharCode(...bytes.subarray(i,i+step));return btoa(out)}
+function setFields(html){const doc=new DOMParser().parseFromString(html,'text/html');const h1=doc.querySelector('h1');$('hero1').value=(h1?.childNodes[0]?.textContent||'Двигаем').trim();$('hero2').value=doc.querySelector('h1 .accent')?.textContent.trim()||'масштаб';$('heroLead').value=doc.querySelector('.hero-lead')?.textContent.trim()||'';$('about1').value=doc.querySelector('.about-copy p:nth-child(1)')?.textContent.trim()||'';$('about2').value=doc.querySelector('.about-copy p:nth-child(2)')?.textContent.trim()||'';$('years').value=doc.querySelector('.about-metrics>div:nth-child(1) strong')?.textContent.trim()||'5+';$('cargoCount').value=doc.querySelector('.about-metrics>div:nth-child(2) strong')?.textContent.trim()||'3000+';const mail=doc.querySelector('a[href^="mailto:"]')?.getAttribute('href')||'';$('email').value=mail.replace(/^mailto:/,'');const tel=doc.querySelector('.nav-phone b')?.textContent.trim()||'';$('phone').value=tel}
+function applyFields(html){const doc=new DOMParser().parseFromString(html,'text/html'),phone=$('phone').value.trim(),digits=phone.replace(/\D/g,''),email=$('email').value.trim();const h1=doc.querySelector('h1');if(h1)h1.innerHTML=`${escapeHtml($('hero1').value.trim())}<br><span class="accent">${escapeHtml($('hero2').value.trim())}</span>`;const map={'.hero-lead':$('heroLead').value,'.about-copy p:nth-child(1)':$('about1').value,'.about-copy p:nth-child(2)':$('about2').value,'.about-metrics>div:nth-child(1) strong':$('years').value,'.about-metrics>div:nth-child(2) strong':$('cargoCount').value,'.confidence>div .confidence-grid>div:nth-child(1) span':$('years').value};for(const [sel,val] of Object.entries(map)){const el=doc.querySelector(sel);if(el)el.textContent=val.trim()}doc.querySelectorAll('a[href^="tel:"]').forEach(a=>a.href='tel:+'+digits.replace(/^\+/,''));doc.querySelectorAll('.nav-phone b,.footer-phone').forEach(el=>el.textContent=phone);doc.querySelectorAll('a[href^="mailto:"]').forEach(a=>{a.href='mailto:'+email;a.textContent=email});doc.querySelectorAll('a[href*="wa.me/"]').forEach(a=>a.href='https://wa.me/'+digits);const ld=doc.querySelector('script[type="application/ld+json"]');if(ld){try{const j=JSON.parse(ld.textContent);j.email='mailto:'+email;j.telephone=phone;j.contactPoint.telephone=phone;ld.textContent=JSON.stringify(j)}catch{}}return '<!doctype html>\n'+doc.documentElement.outerHTML}
+function escapeHtml(v){return v.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
+async function loadSite(){status('Загружаю текущую версию сайта…');const ref=await gh(`/repos/${OWNER}/${REPO}/git/ref/heads/${BRANCH}`);headSha=ref.object.sha;const commit=await gh(`/repos/${OWNER}/${REPO}/git/commits/${headSha}`);treeSha=commit.tree.sha;const tree=await gh(`/repos/${OWNER}/${REPO}/git/trees/${treeSha}?recursive=1`);const item=tree.tree.find(x=>x.path==='index.html');if(!item)throw new Error('index.html не найден');const blob=await gh(`/repos/${OWNER}/${REPO}/git/blobs/${item.sha}`);source=b64ToText(blob.content);setFields(source);status('Текущие данные загружены.','ok')}
+$('connect').onclick=async()=>{token=$('token').value.trim();if(!token)return;const s=$('authStatus');s.textContent='Проверяю доступ…';try{await gh(`/repos/${OWNER}/${REPO}`);sessionStorage.setItem('trakvero_token',token);$('authCard').classList.add('hidden');$('editor').classList.remove('hidden');await loadSite()}catch(e){s.textContent='Не удалось войти: '+e.message;s.className='status bad'}};
+$('save').onclick=async()=>{try{status('Готовлю изменения…');const latestRef=await gh(`/repos/${OWNER}/${REPO}/git/ref/heads/${BRANCH}`),latestCommit=await gh(`/repos/${OWNER}/${REPO}/git/commits/${latestRef.object.sha}`);const html=applyFields(source);const blob=await gh(`/repos/${OWNER}/${REPO}/git/blobs`,{method:'POST',body:JSON.stringify({content:textToB64(html),encoding:'base64'})});const tree=await gh(`/repos/${OWNER}/${REPO}/git/trees`,{method:'POST',body:JSON.stringify({base_tree:latestCommit.tree.sha,tree:[{path:'index.html',mode:'100644',type:'blob',sha:blob.sha}]})});const commit=await gh(`/repos/${OWNER}/${REPO}/git/commits`,{method:'POST',body:JSON.stringify({message:'Обновление сайта через админ-панель',tree:tree.sha,parents:[latestRef.object.sha]})});await gh(`/repos/${OWNER}/${REPO}/git/refs/heads/${BRANCH}`,{method:'PATCH',body:JSON.stringify({sha:commit.sha,force:false})});source=html;status('Готово! Изменения опубликованы. Обновление сайта займёт 1–3 минуты.','ok')}catch(e){status('Ошибка сохранения: '+e.message,'bad')}};
+$('reload').onclick=()=>loadSite().catch(e=>status('Ошибка загрузки: '+e.message,'bad'));
+$('logout').onclick=()=>{sessionStorage.removeItem('trakvero_token');location.reload()};
+const saved=sessionStorage.getItem('trakvero_token');if(saved){$('token').value=saved;$('connect').click()}
+</script>
+</body>
+</html>
